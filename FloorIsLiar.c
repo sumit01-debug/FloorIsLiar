@@ -565,7 +565,7 @@ void DrawGame(void) {
             DrawText("Press ENTER to Continue", 250, 300, 20, DARKGRAY);
             break;
         case GAME_VICTORY:
-            DrawText("Conratulations!", 200, 200, 40, GOLD);
+            DrawText("Congratulations!", 200, 200, 40, GOLD);
             DrawText("You won over RageBait!!", 200, 260, 30, DARKGRAY);
             DrawText("Press ENTER to Restart", 250, 350, 20, DARKGRAY);
             break;
