@@ -604,6 +604,7 @@ int main(void)
 
     CloseWindow();
     printf("Game closed successfully.\n");
+    printf("Sudip Saha")
 
     return 0;
 }
