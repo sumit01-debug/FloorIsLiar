@@ -603,6 +603,8 @@ int main(void)
     CloseAudioDevice();         // Close audio device
 
     CloseWindow();
+    printf("Game closed successfully.\n");
+    printf("Sudip Saha")
      printf("Game closed successfully.\n");
      printf("Sudip");
 
