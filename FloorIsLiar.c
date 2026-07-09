@@ -1,4 +1,4 @@
-﻿#include "raylib.h"
+#include "raylib.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -25,10 +25,6 @@ void* my_acrt_iob_func(unsigned index) {
 }
 
 void* (*_imp____acrt_iob_func)(unsigned) = my_acrt_iob_func;
-#ifndef ENTITIES_H
-#define ENTITIES_H
-
-
 #define MAX_BLOCKS 200
 #define MAX_SPIKES 50
 #define MAX_TRIGGERS 20
@@ -69,30 +65,12 @@ typedef struct Trigger {
     bool active;
 } Trigger;
 
-extern Block blocks[MAX_BLOCKS];
-extern int blockCount;
-
-extern Spike spikes[MAX_SPIKES];
-extern int spikeCount;
-
-extern Trigger triggers[MAX_TRIGGERS];
-extern int triggerCount;
-
-extern Rectangle door;
-extern bool doorActive;
-extern bool controlsReversed;
-
 void InitEntities(void);
 void DrawEntities(void);
 void AddBlock(float x, float y, float w, float h, Color c);
 void AddSpike(float x, float y, float w, float h, SpikeDir dir);
 void AddTrigger(float x, float y, float w, float h, TrollAction action);
 void CheckTriggers(Rectangle playerRect);
-
-#endif
-#ifndef PLAYER_H
-#define PLAYER_H
-
 
 typedef struct Player {
     Vector2 position;
@@ -104,23 +82,12 @@ typedef struct Player {
     Rectangle rect;
 } Player;
 
-extern Player player;
-
 void InitPlayer(void);
 void UpdatePlayer(float dt);
 void DrawPlayer(void);
 void CheckCollisions(void);
 
-#endif
-#ifndef LEVEL_H
-#define LEVEL_H
-
 void LoadLevel(int levelIndex);
-
-#endif
-#ifndef GAME_H
-#define GAME_H
-
 
 typedef enum GameState {
     TITLE,
@@ -130,17 +97,11 @@ typedef enum GameState {
     GAME_VICTORY
 } GameState;
 
-extern GameState currentState;
-extern int currentLevel;
-extern int lives;
-
 void InitGame(void);
 void UpdateGame(void);
 void DrawGame(void);
 void ResetLevel(void);
 void ResetGame(void);
-
-#endif
 
 Block blocks[MAX_BLOCKS];
 int blockCount = 0;
@@ -603,10 +564,6 @@ int main(void)
     CloseAudioDevice();         // Close audio device
 
     CloseWindow();
-    printf("Game closed successfully.\n");
-    printf("Sudip Saha")
-     printf("Game closed successfully.\n");
-     printf("Sudip");
 
     return 0;
 }
