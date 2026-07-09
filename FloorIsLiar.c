@@ -91,17 +91,57 @@ void LoadLevel(int levelIndex);
 
 typedef enum GameState {
     TITLE,
+    NAME_INPUT,
+    INSTRUCTIONS,
+    HIGH_SCORES,
     PLAYING,
+    PAUSED,
     GAME_OVER,
     LEVEL_COMPLETE,
     GAME_VICTORY
 } GameState;
+
+typedef struct ScoreEntry {
+    char name[32];
+    float time;
+} ScoreEntry;
 
 void InitGame(void);
 void UpdateGame(void);
 void DrawGame(void);
 void ResetLevel(void);
 void ResetGame(void);
+void LoadScores(void);
+void SaveScores(void);
+void AddScore(const char* name, float time);
+
+Texture2D bgTex;
+Texture2D checkTex;
+Texture2D playerTex;
+Texture2D longPlatformTex;
+Texture2D smallPlatformTex;
+Music bgMusic;
+
+GameState currentState = TITLE;
+int currentLevel = 1;
+int lives = 2;
+float playTime = 0.0f;
+char playerName[32] = "\0";
+int letterCount = 0;
+ScoreEntry topScores[3] = {0};
+
+Rectangle startBtn = { 300, 250, 200, 40 };
+Rectangle instBtn = { 300, 320, 200, 40 };
+Rectangle scoreBtn = { 300, 390, 200, 40 };
+Rectangle homeBtn = { 300, 420, 200, 40 };
+Rectangle backBtn = { 300, 500, 200, 40 };
+Rectangle musicBtn = { 680, 10, 100, 30 };
+Rectangle pauseResumeBtn = { 300, 300, 200, 40 };
+Rectangle pauseRestartBtn = { 300, 370, 200, 40 };
+Rectangle pauseHomeBtn = { 300, 440, 200, 40 };
+bool musicEnabled = true;
+
+Player player;
 
 Block blocks[MAX_BLOCKS];
 int blockCount = 0;
@@ -115,6 +155,7 @@ int triggerCount = 0;
 Rectangle door;
 bool doorActive = false;
 bool controlsReversed = false;
+Rectangle pauseBtn = { 740, 10, 40, 40 };
 
 void InitEntities(void) {
     blockCount = 0;
@@ -156,16 +197,33 @@ void AddTrigger(float x, float y, float w, float h, TrollAction action) {
 void DrawEntities(void) {
     // Draw Door
     if (doorActive) {
-        DrawRectangleRec(door, LIME);
-        DrawRectangleLinesEx(door, 2, DARKGREEN);
-        DrawRectangle(door.x + 5, door.y + door.height/2, 5, 5, DARKGREEN); // Door knob
+        if (checkTex.id != 0) {
+            DrawTexturePro(checkTex, (Rectangle){0, 0, checkTex.width, checkTex.height}, door, (Vector2){0, 0}, 0.0f, WHITE);
+        } else {
+            DrawRectangleRec(door, LIME);
+            DrawRectangleLinesEx(door, 2, DARKGREEN);
+            DrawRectangle(door.x + 5, door.y + door.height/2, 5, 5, DARKGREEN); // Door knob
+        }
     }
 
     // Draw Blocks
     for (int i = 0; i < blockCount; i++) {
         if (blocks[i].active) {
-            DrawRectangleRec(blocks[i].rect, blocks[i].color);
-            DrawRectangleLinesEx(blocks[i].rect, 2, BLACK);
+            if (longPlatformTex.id != 0) {
+                if (blocks[i].rect.y == 500 && blocks[i].rect.width == 50) {
+                    float srcX = (blocks[i].rect.x / 800.0f) * longPlatformTex.width;
+                    float srcW = (blocks[i].rect.width / 800.0f) * longPlatformTex.width;
+                    DrawTexturePro(longPlatformTex, (Rectangle){srcX, 0, srcW, longPlatformTex.height}, blocks[i].rect, (Vector2){0, 0}, 0.0f, WHITE);
+                } else {
+                    Texture2D texToUse = smallPlatformTex.id != 0 ? smallPlatformTex : longPlatformTex;
+                    DrawTexturePro(texToUse, (Rectangle){0, 0, texToUse.width, texToUse.height}, blocks[i].rect, (Vector2){0, 0}, 0.0f, WHITE);
+                }
+            } else if (smallPlatformTex.id != 0) {
+                DrawTexturePro(smallPlatformTex, (Rectangle){0, 0, smallPlatformTex.width, smallPlatformTex.height}, blocks[i].rect, (Vector2){0, 0}, 0.0f, WHITE);
+            } else {
+                DrawRectangleRec(blocks[i].rect, blocks[i].color);
+                DrawRectangleLinesEx(blocks[i].rect, 2, BLACK);
+            }
         }
     }
 
@@ -264,7 +322,7 @@ void LoadLevel(int levelIndex) {
             AddTrigger(400, 400, 50, 100, TROLL_FALLING_SPIKE);
             // Some static spikes on the floor
             AddSpike(200, 470, 30, 30, SPIKE_UP);
-            AddSpike(300, 470, 30, 30, SPIKE_UP);
+            AddSpike(330, 470, 30, 30, SPIKE_UP);
             break;
             
         case 4:
@@ -287,8 +345,6 @@ void LoadLevel(int levelIndex) {
             break;
     }
 }
-
-Player player;
 
 float MathAbs(float x);
 
@@ -348,11 +404,15 @@ void UpdatePlayer(float dt) {
 }
 
 void DrawPlayer(void) {
-    DrawRectangleRec(player.rect, RED);
-    // Draw face
-    DrawRectangle(player.rect.x + 5, player.rect.y + 5, 5, 5, BLACK);
-    DrawRectangle(player.rect.x + 20, player.rect.y + 5, 5, 5, BLACK);
-    DrawRectangle(player.rect.x + 5, player.rect.y + 20, 20, 5, BLACK);
+    if (playerTex.id != 0) {
+        DrawTexturePro(playerTex, (Rectangle){0, 0, playerTex.width, playerTex.height}, player.rect, (Vector2){0, 0}, 0.0f, WHITE);
+    } else {
+        DrawRectangleRec(player.rect, RED);
+        // Draw face
+        DrawRectangle(player.rect.x + 5, player.rect.y + 5, 5, 5, BLACK);
+        DrawRectangle(player.rect.x + 20, player.rect.y + 5, 5, 5, BLACK);
+        DrawRectangle(player.rect.x + 5, player.rect.y + 20, 20, 5, BLACK);
+    }
 }
 
 void CheckCollisions(void) {
@@ -437,6 +497,7 @@ void CheckCollisions(void) {
     if (doorActive && CheckCollisionRecs(player.rect, door)) {
         if (currentLevel == 5) {
             currentState = GAME_VICTORY;
+            AddScore(playerName, playTime);
         } else {
             currentState = LEVEL_COMPLETE;
         }
@@ -447,14 +508,59 @@ float MathAbs(float x) {
     return x < 0 ? -x : x;
 }
 
-GameState currentState = TITLE;
-int currentLevel = 1;
-int lives = 2;
+void LoadScores(void) {
+    for(int i=0; i<3; i++) {
+        topScores[i].time = 9999.0f;
+        topScores[i].name[0] = '\0';
+    }
+    FILE *f = fopen("scores.txt", "r");
+    if (f) {
+        for(int i=0; i<3; i++) {
+            if (fscanf(f, "%31s %f", topScores[i].name, &topScores[i].time) != 2) break;
+        }
+        fclose(f);
+    }
+}
+
+void SaveScores(void) {
+    FILE *f = fopen("scores.txt", "w");
+    if (f) {
+        for(int i=0; i<3; i++) {
+            if (topScores[i].time < 9999.0f) {
+                fprintf(f, "%s %f\n", topScores[i].name, topScores[i].time);
+            }
+        }
+        fclose(f);
+    }
+}
+
+void AddScore(const char* name, float time) {
+    ScoreEntry newEntry;
+    int i = 0;
+    while(name[i] != '\0' && i < 31) {
+        newEntry.name[i] = name[i];
+        i++;
+    }
+    newEntry.name[i] = '\0';
+    newEntry.time = time;
+
+    for (int j=0; j<3; j++) {
+        if (newEntry.time < topScores[j].time) {
+            for (int k=2; k>j; k--) {
+                topScores[k] = topScores[k-1];
+            }
+            topScores[j] = newEntry;
+            break;
+        }
+    }
+    SaveScores();
+}
 
 void InitGame(void) {
     currentState = TITLE;
     currentLevel = 1;
     lives = 2;
+    LoadScores();
 }
 
 void ResetLevel(void) {
@@ -467,6 +573,7 @@ void ResetLevel(void) {
 void ResetGame(void) {
     currentLevel = 1;
     lives = 2;
+    playTime = 0.0f;
     ResetLevel();
 }
 
@@ -475,14 +582,80 @@ void UpdateGame(void) {
 
     switch(currentState) {
         case TITLE:
-            if (IsKeyPressed(KEY_ENTER)) {
-                ResetGame();
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                Vector2 m = GetMousePosition();
+                if (CheckCollisionPointRec(m, musicBtn)) {
+                    musicEnabled = !musicEnabled;
+                    if (musicEnabled) {
+                        ResumeMusicStream(bgMusic);
+                    } else {
+                        PauseMusicStream(bgMusic);
+                    }
+                } else if (CheckCollisionPointRec(m, startBtn)) {
+                    currentState = NAME_INPUT;
+                    letterCount = 0;
+                    playerName[0] = '\0';
+                } else if (CheckCollisionPointRec(m, instBtn)) {
+                    currentState = INSTRUCTIONS;
+                } else if (CheckCollisionPointRec(m, scoreBtn)) {
+                    currentState = HIGH_SCORES;
+                }
+            }
+            break;
+        case NAME_INPUT:
+            {
+                int key = GetCharPressed();
+                while (key > 0) {
+                    if ((key >= 32) && (key <= 125) && (letterCount < 31)) {
+                        playerName[letterCount] = (char)key;
+                        playerName[letterCount+1] = '\0';
+                        letterCount++;
+                    }
+                    key = GetCharPressed();
+                }
+                if (IsKeyPressed(KEY_BACKSPACE)) {
+                    letterCount--;
+                    if (letterCount < 0) letterCount = 0;
+                    playerName[letterCount] = '\0';
+                }
+                if (IsKeyPressed(KEY_ENTER) && letterCount > 0) {
+                    ResetGame();
+                }
+            }
+            break;
+        case INSTRUCTIONS:
+        case HIGH_SCORES:
+            if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) || (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(GetMousePosition(), backBtn))) {
+                currentState = TITLE;
             }
             break;
         case PLAYING:
-            UpdatePlayer(dt);
-            CheckCollisions();
-            CheckTriggers(player.rect);
+            if (IsKeyPressed(KEY_P) || (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(GetMousePosition(), pauseBtn))) {
+                currentState = PAUSED;
+                PauseMusicStream(bgMusic);
+            } else {
+                playTime += dt;
+                UpdatePlayer(dt);
+                CheckCollisions();
+                CheckTriggers(player.rect);
+            }
+            break;
+        case PAUSED:
+            if (IsKeyPressed(KEY_P) || (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(GetMousePosition(), pauseBtn))) {
+                currentState = PLAYING;
+                if (musicEnabled) ResumeMusicStream(bgMusic);
+            }
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                Vector2 m = GetMousePosition();
+                if (CheckCollisionPointRec(m, pauseResumeBtn)) {
+                    currentState = PLAYING;
+                    if (musicEnabled) ResumeMusicStream(bgMusic);
+                } else if (CheckCollisionPointRec(m, pauseRestartBtn)) {
+                    ResetGame();
+                } else if (CheckCollisionPointRec(m, pauseHomeBtn)) {
+                    currentState = TITLE;
+                }
+            }
             break;
         case GAME_OVER:
             if (IsKeyPressed(KEY_ENTER)) {
@@ -496,8 +669,8 @@ void UpdateGame(void) {
             }
             break;
         case GAME_VICTORY:
-            if (IsKeyPressed(KEY_ENTER)) {
-                ResetGame();
+            if (IsKeyPressed(KEY_ENTER) || (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(GetMousePosition(), homeBtn))) {
+                currentState = TITLE;
             }
             break;
     }
@@ -505,30 +678,107 @@ void UpdateGame(void) {
 
 void DrawGame(void) {
     ClearBackground(CLITERAL(Color){ 245, 245, 220, 255 }); // Pale yellow bg
+    if (bgTex.id != 0) {
+        DrawTexturePro(bgTex, (Rectangle){0, 0, bgTex.width, bgTex.height}, (Rectangle){0, 0, 800, 600}, (Vector2){0, 0}, 0.0f, WHITE);
+    }
 
     switch(currentState) {
         case TITLE:
-            DrawText("FLOOR IS LIAR", 200, 200, 40, BLACK);
-            DrawText("Press ENTER to Start", 250, 300, 20, DARKGRAY);
+            DrawText("FLOOR IS LIAR", 200, 150, 40, WHITE);
+            DrawRectangleRec(startBtn, DARKGRAY);
+            DrawText("Start Game", startBtn.x + 30, startBtn.y + 10, 20, WHITE);
+            DrawRectangleRec(instBtn, DARKGRAY);
+            DrawText("Instructions", instBtn.x + 30, instBtn.y + 10, 20, WHITE);
+            DrawRectangleRec(scoreBtn, DARKGRAY);
+            DrawText("Leaderboard", scoreBtn.x + 35, scoreBtn.y + 10, 20, WHITE);
+            
+            DrawRectangleRec(musicBtn, DARKGRAY);
+            DrawText(musicEnabled ? "Music: ON" : "Music: OFF", musicBtn.x + 10, musicBtn.y + 8, 15, WHITE);
+            break;
+        case NAME_INPUT:
+            DrawText("Enter Your Name:", 250, 200, 30, WHITE);
+            DrawRectangle(250, 250, 300, 40, LIGHTGRAY);
+            DrawText(playerName, 260, 260, 20, BLACK);
+            DrawText("Press ENTER to Confirm", 250, 320, 20, LIGHTGRAY);
+            break;
+        case INSTRUCTIONS:
+            DrawText("INSTRUCTIONS", 300, 100, 30, WHITE);
+            DrawText("- Arrow Keys / WASD to move", 200, 200, 20, LIGHTGRAY);
+            DrawText("- UP / W / SPACE to jump", 200, 250, 20, LIGHTGRAY);
+            DrawText("- Avoid spikes and traps!", 200, 300, 20, LIGHTGRAY);
+            DrawText("- Reach the green door", 200, 350, 20, LIGHTGRAY);
+            DrawRectangleRec(backBtn, DARKGRAY);
+            DrawText("Back", backBtn.x + 75, backBtn.y + 10, 20, WHITE);
+            break;
+        case HIGH_SCORES:
+            DrawText("LEADERBOARD", 310, 100, 30, WHITE);
+            for(int i=0; i<3; i++) {
+                if (topScores[i].time < 9999.0f) {
+                    int m = (int)topScores[i].time / 60;
+                    float s = topScores[i].time - (m * 60);
+                    DrawText(TextFormat("%d. %s - %02d:%05.2f", i+1, topScores[i].name, m, s), 250, 200 + i*50, 20, LIGHTGRAY);
+                } else {
+                    DrawText(TextFormat("%d. ---", i+1), 250, 200 + i*50, 20, DARKGRAY);
+                }
+            }
+            DrawRectangleRec(backBtn, DARKGRAY);
+            DrawText("Back", backBtn.x + 75, backBtn.y + 10, 20, WHITE);
             break;
         case PLAYING:
             DrawEntities();
             DrawPlayer();
-            DrawText(TextFormat("Level: %d", currentLevel), 10, 10, 20, BLACK);
-            DrawText(TextFormat("Lives: %d", lives), 10, 40, 20, RED);
+            DrawText(TextFormat("Level: %d", currentLevel), 10, 10, 20, WHITE);
+            DrawText(TextFormat("Lives: %d", lives), 10, 40, 20, YELLOW);
+            
+            // Draw Pause Button
+            DrawRectangleRec(pauseBtn, DARKGRAY);
+            DrawRectangle(pauseBtn.x + 12, pauseBtn.y + 10, 6, 20, WHITE);
+            DrawRectangle(pauseBtn.x + 22, pauseBtn.y + 10, 6, 20, WHITE);
+
+            // Draw Time
+            DrawText(TextFormat("Time: %02d:%05.2f", (int)playTime / 60, playTime - ((int)playTime / 60) * 60), 620, 60, 20, WHITE);
+            break;
+        case PAUSED:
+            DrawEntities();
+            DrawPlayer();
+            DrawText(TextFormat("Level: %d", currentLevel), 10, 10, 20, WHITE);
+            DrawText(TextFormat("Lives: %d", lives), 10, 40, 20, YELLOW);
+            
+            // Draw Play Button
+            DrawRectangleRec(pauseBtn, DARKGRAY);
+            DrawTriangle((Vector2){pauseBtn.x + 12, pauseBtn.y + 10}, (Vector2){pauseBtn.x + 12, pauseBtn.y + 30}, (Vector2){pauseBtn.x + 32, pauseBtn.y + 20}, WHITE);
+            
+            // Draw Time
+            DrawText(TextFormat("Time: %02d:%05.2f", (int)playTime / 60, playTime - ((int)playTime / 60) * 60), 620, 60, 20, WHITE);
+
+            DrawRectangle(0, 0, 800, 600, (Color){ 0, 0, 0, 150 });
+            DrawText("PAUSED", 310, 200, 50, WHITE);
+            
+            DrawRectangleRec(pauseResumeBtn, DARKGRAY);
+            DrawText("Resume", pauseResumeBtn.x + 60, pauseResumeBtn.y + 10, 20, WHITE);
+            
+            DrawRectangleRec(pauseRestartBtn, DARKGRAY);
+            DrawText("Restart", pauseRestartBtn.x + 60, pauseRestartBtn.y + 10, 20, WHITE);
+            
+            DrawRectangleRec(pauseHomeBtn, DARKGRAY);
+            DrawText("Home", pauseHomeBtn.x + 70, pauseHomeBtn.y + 10, 20, WHITE);
             break;
         case GAME_OVER:
-            DrawText("GAME OVER", 250, 200, 50, RED);
-            DrawText("Press ENTER to Restart", 250, 300, 20, DARKGRAY);
+            DrawText("GAME OVER", 250, 200, 50, WHITE);
+            DrawText("Press ENTER to Restart", 250, 300, 20, LIGHTGRAY);
             break;
         case LEVEL_COMPLETE:
-            DrawText("LEVEL COMPLETE", 200, 200, 40, GREEN);
-            DrawText("Press ENTER to Continue", 250, 300, 20, DARKGRAY);
+            DrawText("LEVEL COMPLETE", 200, 200, 40, YELLOW);
+            DrawText("Press ENTER to Continue", 250, 300, 20, LIGHTGRAY);
             break;
         case GAME_VICTORY:
             DrawText("Congratulations!", 200, 200, 40, GOLD);
-            DrawText("You won over RageBait!!", 200, 260, 30, DARKGRAY);
-            DrawText("Press ENTER to Restart", 250, 350, 20, DARKGRAY);
+            DrawText("You won over RageBait!!", 200, 260, 30, WHITE);
+            DrawText(TextFormat("Time: %02d:%05.2f", (int)playTime / 60, playTime - ((int)playTime / 60) * 60), 200, 310, 20, YELLOW);
+            DrawText("Press ENTER to Restart", 250, 370, 20, LIGHTGRAY);
+            
+            DrawRectangleRec(homeBtn, DARKGRAY);
+            DrawText("Return Home", homeBtn.x + 35, homeBtn.y + 10, 20, WHITE);
             break;
     }
 }
@@ -541,9 +791,15 @@ int main(void)
     InitWindow(screenWidth, screenHeight, "Floor is Liar");
     InitAudioDevice(); // Initialize audio device
 
+    bgTex = LoadTexture("lava.png");
+    checkTex = LoadTexture("check.png");
+    playerTex = LoadTexture("player1.png");
+    longPlatformTex = LoadTexture("longplatform.png");
+    smallPlatformTex = LoadTexture("smallplatform.png");
+
     InitGame();
 
-    Music bgMusic = LoadMusicStream("Mission_Impossible.mp3");
+    bgMusic = LoadMusicStream("Mission_Impossible.mp3");
     PlayMusicStream(bgMusic); // Start playing
 
     SetTargetFPS(60);
@@ -559,6 +815,12 @@ int main(void)
         
         EndDrawing();
     }
+
+    UnloadTexture(bgTex);
+    UnloadTexture(checkTex);
+    UnloadTexture(playerTex);
+    UnloadTexture(longPlatformTex);
+    UnloadTexture(smallPlatformTex);
 
     UnloadMusicStream(bgMusic); // Unload music stream buffers from RAM
     CloseAudioDevice();         // Close audio device
