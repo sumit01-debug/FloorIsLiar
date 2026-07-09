@@ -103,6 +103,18 @@ void DrawGame(void);
 void ResetLevel(void);
 void ResetGame(void);
 
+Texture2D bgTex;
+Texture2D checkTex;
+Texture2D playerTex;
+Texture2D longPlatformTex;
+Texture2D smallPlatformTex;
+
+GameState currentState = TITLE;
+int currentLevel = 1;
+int lives = 2;
+
+Player player;
+
 Block blocks[MAX_BLOCKS];
 int blockCount = 0;
 
@@ -156,16 +168,33 @@ void AddTrigger(float x, float y, float w, float h, TrollAction action) {
 void DrawEntities(void) {
     // Draw Door
     if (doorActive) {
-        DrawRectangleRec(door, LIME);
-        DrawRectangleLinesEx(door, 2, DARKGREEN);
-        DrawRectangle(door.x + 5, door.y + door.height/2, 5, 5, DARKGREEN); // Door knob
+        if (checkTex.id != 0) {
+            DrawTexturePro(checkTex, (Rectangle){0, 0, checkTex.width, checkTex.height}, door, (Vector2){0, 0}, 0.0f, WHITE);
+        } else {
+            DrawRectangleRec(door, LIME);
+            DrawRectangleLinesEx(door, 2, DARKGREEN);
+            DrawRectangle(door.x + 5, door.y + door.height/2, 5, 5, DARKGREEN); // Door knob
+        }
     }
 
     // Draw Blocks
     for (int i = 0; i < blockCount; i++) {
         if (blocks[i].active) {
-            DrawRectangleRec(blocks[i].rect, blocks[i].color);
-            DrawRectangleLinesEx(blocks[i].rect, 2, BLACK);
+            if (longPlatformTex.id != 0) {
+                if (blocks[i].rect.y == 500 && blocks[i].rect.width == 50) {
+                    float srcX = (blocks[i].rect.x / 800.0f) * longPlatformTex.width;
+                    float srcW = (blocks[i].rect.width / 800.0f) * longPlatformTex.width;
+                    DrawTexturePro(longPlatformTex, (Rectangle){srcX, 0, srcW, longPlatformTex.height}, blocks[i].rect, (Vector2){0, 0}, 0.0f, WHITE);
+                } else {
+                    Texture2D texToUse = smallPlatformTex.id != 0 ? smallPlatformTex : longPlatformTex;
+                    DrawTexturePro(texToUse, (Rectangle){0, 0, texToUse.width, texToUse.height}, blocks[i].rect, (Vector2){0, 0}, 0.0f, WHITE);
+                }
+            } else if (smallPlatformTex.id != 0) {
+                DrawTexturePro(smallPlatformTex, (Rectangle){0, 0, smallPlatformTex.width, smallPlatformTex.height}, blocks[i].rect, (Vector2){0, 0}, 0.0f, WHITE);
+            } else {
+                DrawRectangleRec(blocks[i].rect, blocks[i].color);
+                DrawRectangleLinesEx(blocks[i].rect, 2, BLACK);
+            }
         }
     }
 
@@ -288,8 +317,6 @@ void LoadLevel(int levelIndex) {
     }
 }
 
-Player player;
-
 float MathAbs(float x);
 
 void InitPlayer(void) {
@@ -348,11 +375,15 @@ void UpdatePlayer(float dt) {
 }
 
 void DrawPlayer(void) {
-    DrawRectangleRec(player.rect, RED);
-    // Draw face
-    DrawRectangle(player.rect.x + 5, player.rect.y + 5, 5, 5, BLACK);
-    DrawRectangle(player.rect.x + 20, player.rect.y + 5, 5, 5, BLACK);
-    DrawRectangle(player.rect.x + 5, player.rect.y + 20, 20, 5, BLACK);
+    if (playerTex.id != 0) {
+        DrawTexturePro(playerTex, (Rectangle){0, 0, playerTex.width, playerTex.height}, player.rect, (Vector2){0, 0}, 0.0f, WHITE);
+    } else {
+        DrawRectangleRec(player.rect, RED);
+        // Draw face
+        DrawRectangle(player.rect.x + 5, player.rect.y + 5, 5, 5, BLACK);
+        DrawRectangle(player.rect.x + 20, player.rect.y + 5, 5, 5, BLACK);
+        DrawRectangle(player.rect.x + 5, player.rect.y + 20, 20, 5, BLACK);
+    }
 }
 
 void CheckCollisions(void) {
@@ -447,10 +478,6 @@ float MathAbs(float x) {
     return x < 0 ? -x : x;
 }
 
-GameState currentState = TITLE;
-int currentLevel = 1;
-int lives = 2;
-
 void InitGame(void) {
     currentState = TITLE;
     currentLevel = 1;
@@ -505,6 +532,9 @@ void UpdateGame(void) {
 
 void DrawGame(void) {
     ClearBackground(CLITERAL(Color){ 245, 245, 220, 255 }); // Pale yellow bg
+    if (bgTex.id != 0) {
+        DrawTexturePro(bgTex, (Rectangle){0, 0, bgTex.width, bgTex.height}, (Rectangle){0, 0, 800, 600}, (Vector2){0, 0}, 0.0f, WHITE);
+    }
 
     switch(currentState) {
         case TITLE:
@@ -541,6 +571,12 @@ int main(void)
     InitWindow(screenWidth, screenHeight, "Floor is Liar");
     InitAudioDevice(); // Initialize audio device
 
+    bgTex = LoadTexture("background.png");
+    checkTex = LoadTexture("check.png");
+    playerTex = LoadTexture("player1.png");
+    longPlatformTex = LoadTexture("longplatform.png");
+    smallPlatformTex = LoadTexture("smallplatform.png");
+
     InitGame();
 
     Music bgMusic = LoadMusicStream("Mission_Impossible.mp3");
@@ -559,6 +595,12 @@ int main(void)
         
         EndDrawing();
     }
+
+    UnloadTexture(bgTex);
+    UnloadTexture(checkTex);
+    UnloadTexture(playerTex);
+    UnloadTexture(longPlatformTex);
+    UnloadTexture(smallPlatformTex);
 
     UnloadMusicStream(bgMusic); // Unload music stream buffers from RAM
     CloseAudioDevice();         // Close audio device
